@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Provider POS</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+.sidebar{position:fixed;top:0;left:-280px;width:270px;height:100%;background:white;z-index:200;transition:0.3s;box-shadow:5px 0 20px rgba(0,0,0,0.2);overflow-y:auto}
+.sidebar.open{left:0}
+.overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:150;display:none}
+.overlay.show{display:block}
+</style>
+</head>
+<body class="bg-gray-100">
+<div class="bg-white p-3 shadow flex items-center gap-3 sticky top-0 z-50">
+  <div onclick="toggleMenu()" style="font-size:26px;background:#0f5132;color:white;width:45px;height:45px;display:flex;align-items:center;justify-content:center;border-radius:10px;cursor:pointer">☰</div>
+  <div><b>💊 Chemist Eldoret</b><br><small id="topName" class="text-gray-500">Provider</small></div>
+  <button onclick="localStorage.clear();location.href='index.html'" class="ml-auto bg-red-500 text-white px-3 py-2 rounded-xl font-bold">Logout</button>
+</div>
+<div id="overlay" class="overlay" onclick="toggleMenu()"></div>
+<div id="sidebar" class="sidebar p-4">
+  <h3 class="font-bold text-lg mb-1">☰ Menu</h3>
+  <small id="sideEmail" class="text-gray-500"></small>
+  <div class="mt-4 space-y-2">
+    <div onclick="openSec('home')" id="m-home" class="p-3 bg-green-600 text-white rounded-xl font-bold cursor-pointer">🏠 Home</div>
+    <div onclick="openSec('profile')" id="m-profile" class="p-3 bg-gray-100 rounded-xl font-bold cursor-pointer">👤 My Profile</div>
+    <div onclick="openSec('drugs')" id="m-drugs" class="p-3 bg-gray-100 rounded-xl font-bold cursor-pointer">💊 Drugs</div>
+    <div onclick="openSec('patient')" id="m-patient" class="p-3 bg-gray-100 rounded-xl font-bold cursor-pointer">🧑‍⚕️ Patient Sale</div>
+  </div>
+</div>
+<div class="max-w-4xl mx-auto p-3">
+  <div id="sec-home">
+    <div class="bg-white p-10 rounded-2xl shadow text-center mt-10">
+      <h1 class="text-3xl font-bold text-green-800">💊 Chemist Eldoret</h1>
+      <p class="mt-2 text-gray-500">Welcome, <b id="welcomeName">Provider</b></p>
+      <p class="text-6xl mt-6">🏥</p>
+      <p class="mt-4 text-gray-400">Tap ☰ to open Profile, Drugs, Patient</p>
+    </div>
+  </div>
+  <div id="sec-profile" class="hidden">
+    <div class="bg-white p-4 rounded-xl shadow">
+      <h2 class="font-bold text-lg">👤 My Profile</h2>
+      <div id="profileDetails" class="mt-3 text-sm leading-7 bg-gray-50 p-4 rounded-xl">Loading...</div>
+    </div>
+  </div>
+  <div id="sec-drugs" class="hidden">
+    <div class="bg-white p-3 rounded-xl shadow mb-2">
+      <h2 class="font-bold">💊 Drugs Stock (A-Z) - Tap to add</h2>
+      <input id="search" placeholder="Search drug..." class="border w-full p-2 rounded mt-2" oninput="doFilter()">
+      <div id="list" class="mt-2"></div>
+    </div>
+  </div>
+  <div id="sec-patient" class="hidden">
+    <div class="bg-white p-3 rounded-xl shadow">
+      <h2 class="font-bold">🧑‍⚕️ Patient Sale</h2>
+      <div id="status" class="bg-yellow-100 p-2 rounded mt-2 text-sm">Loading...</div>
+      <label class="text-sm font-bold mt-3 block">Patient Name</label>
+      <input id="pname" placeholder="Patient Full Name" value="Tabitha Cherotich" class="border w-full p-3 rounded mb-2">
+      <label class="text-sm font-bold">Patient Phone</label>
+      <input id="pphone" placeholder="Patient phone" class="border w-full p-3 rounded mb-2">
+      <div class="mt-3 font-bold text-sm">Selected Drugs</div>
+      <div id="cart" class="text-sm mt-1">Cart empty - Go to Drugs and tap Add</div>
+      <table id="saleTable" class="w-full mt-2 border hidden"><thead><tr class="bg-gray-100"><th class="p-2 border text-left">Drug</th><th class="p-2 border">Qty</th><th class="p-2 border">Price</th><th class="p-2 border">Total</th><th class="p-2 border"></th></tr></thead><tbody id="saleBody"></tbody></table>
+      <div class="font-bold mt-3 text-lg">Total Ksh <span id="total">0</span></div>
+      <div class="flex gap-2 mt-3">
+        <button onclick="doSell()" class="bg-green-600 text-white flex-1 p-3 rounded-xl font-bold">💰 SELL & PRINT</button>
+        <button onclick="clearCart()" class="bg-gray-200 flex-1 p-3 rounded-xl font-bold">Clear</button>
+      </div>
+      <div id="receipt" class="bg-white border-2 border-dashed mt-3 p-3 rounded hidden"></div>
+    </div>
+  </div>
+</div>
+<script type="module">
+import {createClient} from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+const supabase=createClient('https://urnccqqzoahwdnmygrrc.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVybmNjcXF6b2Fod2RubXlncnJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5MjU0NjksImV4cCI6MjEwODUwMTQ2OX0.5_9I5qh1XgQWh2y-6-Uvv27exPKCq9ImFMK_OK92YG0')
+let provider=JSON.parse(localStorage.getItem('provider')||'null')
+if(!provider){location.href='index.html'}
+document.getElementById('topName').innerText=provider.full_name||provider.email
+document.getElementById('welcomeName').innerText=provider.full_name||provider.email
+document.getElementById('sideEmail').innerText=provider.email
+window.toggleMenu=function(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+window.openSec=function(name){
+  document.querySelectorAll('[id^="sec-"]').forEach(el=>el.classList.add('hidden'));
+  document.getElementById('sec-'+name).classList.remove('hidden');
+  document.querySelectorAll('[id^="m-"]').forEach(el=>{
+    el.className='p-3 bg-gray-100 rounded-xl font-bold cursor-pointer'
+  });
+  const active=document.getElementById('m-'+name);
+  if(active) active.className='p-3 bg-green-600 text-white rounded-xl font-bold cursor-pointer';
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+  if(name==='profile') loadProfile()
+}
+function loadProfile(){let p=provider;document.getElementById('profileDetails').innerHTML=`<b>👤 Full Name:</b> ${p.full_name||'N/A'}<br><b>⚧ Gender:</b> ${p.gender||'N/A'}<br><b>📧 Email:</b> ${p.email}<br><b>📱 Phone:</b> ${p.phone||'N/A'}<br><b>🆔 ID Number:</b> ${p.id_number||'N/A'}<br><b>📍 Location:</b> ${p.location||'N/A'}<br><b>✅ Status:</b> ${p.status}<br><b>📅 Joined:</b> ${p.created_at?new Date(p.created_at).toLocaleString():'N/A'}`}
+let drugs=[],cart=[]
+async function load(){let {data,error}=await supabase.from('drugs').select('*').order('name',{ascending:true});if(error){document.getElementById('status').innerText=error.message;return}drugs=data;document.getElementById('status').innerText='✅ Loaded '+drugs.length+' drugs (A-Z) - Ready';show(drugs)}
+function show(arr){document.getElementById('list').innerHTML=arr.map(d=>`<div class="flex justify-between border-b py-3 items-center"><div><b>${d.name}</b><br><small class="text-gray-500">${d.quantity_in_stock} left | Ksh ${d.selling_price} each</small></div><button onclick="add(${d.id})" class="bg-blue-600 text-white px-4 py-1 rounded-lg font-bold">Add</button></div>`).join('')}
+window.doFilter=function(){let q=document.getElementById('search').value.toLowerCase();show(drugs.filter(d=>d.name.toLowerCase().includes(q)))}
+window.add=function(id){let d=drugs.find(x=>x.id==id);if(d.quantity_in_stock<=0)return alert('Out of stock!');let c=cart.find(x=>x.id==id);if(c){if(c.qty>=d.quantity_in_stock)return alert('Only '+d.quantity_in_stock+' left!');c.qty++;}else{cart.push({id:d.id,name:d.name,price:d.selling_price,buy:d.buying_price,qty:1,stock:d.quantity_in_stock})}draw();document.getElementById('status').innerText='✅ '+d.name+' added to Patient Sale';let toast=document.createElement('div');toast.innerText='✅ '+d.name+' added';toast.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#198754;color:white;padding:12px 20px;border-radius:25px;font-weight:bold;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.3)';document.body.appendChild(toast);setTimeout(()=>toast.remove(),2000)}
+function draw(){let t=0;let h='';let body='';cart.forEach((c,i)=>{t+=c.price*c.qty;h+=`<div class="flex justify-between py-1"><span>${c.name} x${c.qty}</span><span>Ksh ${c.price*c.qty} <button onclick="cart.splice(${i},1);draw()" class="text-red-500 ml-2 font-bold">x</button></span></div>`;body+=`<tr><td class="p-2 border">${c.name}</td><td class="p-2 border"><input type="number" min="1" max="${c.stock}" value="${c.qty}" onchange="updateQty(${i},this.value)" class="w-12 border rounded"></td><td class="p-2 border">Ksh ${c.price}</td><td class="p-2 border">Ksh ${c.price*c.qty}</td><td class="p-2 border"><button onclick="cart.splice(${i},1);draw()" class="text-red-500">❌</button></td></tr>`});document.getElementById('cart').innerHTML=h||'Cart empty - Go to Drugs and tap Add';if(cart.length>0){document.getElementById('saleTable').classList.remove('hidden');document.getElementById('saleBody').innerHTML=body}else{document.getElementById('saleTable').classList.add('hidden')}document.getElementById('total').innerText=t}
+window.updateQty=function(i,v){let val=parseInt(v);if(val<1)val=1;if(val>cart[i].stock){alert('Only '+cart[i].stock+' left');val=cart[i].stock}cart[i].qty=val;draw()}
+window.clearCart=function(){cart=[];draw();document.getElementById('receipt').classList.add('hidden')}
+window.doSell=async function(){if(!cart.length)return alert('Cart empty - Add drugs from Drugs tab');let patient=document.getElementById('pname').value;if(!patient)return alert('Enter patient name');let phoneVal=document.getElementById('pphone').value||'N/A';for(let c of cart){await supabase.from('sales').insert([{drug_id:c.id,drug_name:c.name,quantity_sold:c.qty,total_price:c.price*c.qty,total_amount:c.price*c.qty,profit:(c.price-c.buy)*c.qty,patient_name:patient,patient_phone:phoneVal,provider_email:provider.email}]);await supabase.from('drugs').update({quantity_in_stock:c.stock-c.qty}).eq('id',c.id)}let total=document.getElementById('total').innerText;let receiptNo='RCP-'+Date.now().toString().slice(-6);let itemsHtml=cart.map(c=>`<div style="display:flex;justify-content:space-between"><span>${c.name} x${c.qty}</span><span>Ksh ${c.price*c.qty}</span></div>`).join('');document.getElementById('receipt').classList.remove('hidden');document.getElementById('receipt').innerHTML=`<div style="text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px"><b>CHEMIST ELDORET</b><br><small>Sales Receipt</small></div><p><b>Receipt No:</b> ${receiptNo}</p><p><b>Patient:</b> ${patient}</p><p><b>Phone:</b> ${phoneVal}</p><p><b>Date:</b> ${new Date().toLocaleString()}</p><p><b>Served by:</b> ${provider.full_name}</p><hr style="margin:8px 0">${itemsHtml}<hr style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-weight:bold;font-size:16px"><span>TOTAL</span><span>Ksh ${total}</span></div><p style="text-align:center;margin-top:10px;font-size:12px">Thank you! Get well soon.</p><button onclick="window.print()" class="bg-black text-white w-full p-2 rounded mt-2">🖨️ Print</button>`;cart=[];draw();load()}
+load()
+</script>
+</body>
+</html> 

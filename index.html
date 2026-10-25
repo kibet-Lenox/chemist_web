@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Login - Chemist Eldoret</title><script src="https://cdn.tailwindcss.com"></script></head>
+<body class="bg-gray-100 p-4">
+<div class="max-w-md mx-auto bg-white p-6 rounded-xl shadow mt-6">
+<h1 class="font-bold text-xl mb-1">💊 Chemist Eldoret</h1>
+<p class="text-sm text-gray-500 mb-4">Provider & Admin Login</p>
+<div id="msg" class="mb-3 text-sm p-2 rounded hidden"></div>
+<div id="loginBox">
+<input id="email" placeholder="Email" class="border w-full p-3 rounded mb-2">
+<input id="pass" type="password" placeholder="Password" class="border w-full p-3 rounded mb-3">
+<button onclick="doLogin()" class="bg-blue-600 text-white w-full p-3 rounded-xl font-bold">Login</button>
+<p class="text-sm mt-4 text-center">No account? <button onclick="showReg()" class="text-blue-600 font-bold underline">Register as Service Provider</button></p>
+</div>
+<div id="regBox" class="hidden mt-6 border-t-2 pt-4">
+<h2 class="font-bold text-lg">📝 Register as Service Provider</h2>
+<p class="text-xs text-gray-500 mb-3">All fields required *</p>
+<div id="regMsg" class="mb-2 text-sm p-2 rounded hidden"></div>
+<input id="rName" placeholder="Full Name *" class="border w-full p-3 rounded mt-2">
+<input id="rPhone" type="text" inputmode="numeric" placeholder="Phone (10+ digits) *" class="border w-full p-3 rounded mt-2">
+<input id="rEmail" placeholder="Email (must be @gmail.com) *" class="border w-full p-3 rounded mt-2">
+<input id="rId" type="text" inputmode="numeric" placeholder="ID Number (8+ digits) *" class="border w-full p-3 rounded mt-2">
+<input id="rLoc" placeholder="Location e.g. Eldoret *" class="border w-full p-3 rounded mt-2">
+<label class="text-sm font-bold mt-3 block">Gender *</label>
+<select id="rGender" class="border w-full p-3 rounded mt-1">
+<option value="">-- Select Gender --</option>
+<option value="Male">Male</option>
+<option value="Female">Female</option>
+<option value="Other">Other</option>
+</select>
+<div class="relative mt-3">
+<input id="rPass" type="password" placeholder="Create Password (min 4 chars) *" class="border w-full p-3 rounded pr-20">
+<button type="button" onclick="togglePass('rPass', this)" class="absolute right-2 top-2.5 text-xs bg-gray-200 px-2 py-1 rounded">SHOW</button>
+</div>
+<div class="relative mt-2">
+<input id="rPass2" type="password" placeholder="Confirm Password *" class="border w-full p-3 rounded pr-20">
+<button type="button" onclick="togglePass('rPass2', this)" class="absolute right-2 top-2.5 text-xs bg-gray-200 px-2 py-1 rounded">SHOW</button>
+</div>
+<button onclick="doReg()" id="regBtn" class="bg-green-600 text-white w-full p-3 rounded-xl mt-4 font-bold">Submit for Verification</button>
+<button onclick="hideReg()" class="bg-gray-200 w-full p-2 rounded-xl mt-2 text-sm">Cancel - Back to Login</button>
+</div>
+<div id="sentBlock" class="hidden mt-6 bg-green-50 border-2 border-green-500 p-4 rounded-xl text-center">
+<h2 class="font-bold text-green-700 text-lg">✅ Application Sent!</h2>
+<p class="text-sm mt-2">Your application has been sent for <b>Admin Verification</b>.</p>
+<p class="text-sm">Wait for approval. Do not register again.</p>
+<p class="text-xs mt-3 text-gray-500">Email: <span id="sentEmail" class="font-bold"></span></p>
+<button onclick="backToLoginAfterSent()" class="bg-green-600 text-white w-full p-2 rounded-xl mt-3">Back to Login</button>
+</div>
+</div>
+<script type="module">
+import {createClient} from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+const supabase=createClient('https://urnccqqzoahwdnmygrrc.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVybmNjcXF6b2Fod2RubXlncnJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5MjU0NjksImV4cCI6MjEwODUwMTQ2OX0.5_9I5qh1XgQWh2y-6-Uvv27exPKCq9ImFMK_OK92YG0')
+function showMsg(el, txt, isError=true){
+  el.classList.remove('hidden');
+  el.className = isError ? 'mb-3 text-sm p-3 rounded bg-red-100 text-red-700 border' : 'mb-3 text-sm p-3 rounded bg-blue-100 text-blue-700 border';
+  el.innerText = txt;
+}
+window.togglePass = (id, btn)=>{
+  let inp = document.getElementById(id);
+  if(inp.type==='password'){ inp.type='text'; btn.innerText='HIDE'; }
+  else { inp.type='password'; btn.innerText='SHOW'; }
+}
+window.showReg = ()=>{
+  document.getElementById('regBox').classList.remove('hidden');
+  document.getElementById('loginBox').classList.add('hidden');
+  document.getElementById('sentBlock').classList.add('hidden');
+  document.getElementById('msg').classList.add('hidden');
+}
+window.hideReg = ()=>{
+  document.getElementById('regBox').classList.add('hidden');
+  document.getElementById('loginBox').classList.remove('hidden');
+}
+window.backToLoginAfterSent = ()=>{
+  document.getElementById('sentBlock').classList.add('hidden');
+  document.getElementById('loginBox').classList.remove('hidden');
+  document.getElementById('regBox').classList.add('hidden');
+}
+window.doReg = async()=>{
+  let regMsg = document.getElementById('regMsg');
+  let regBtn = document.getElementById('regBtn');
+  let name = rName.value.trim();
+  let phone = rPhone.value.trim();
+  let email = rEmail.value.trim().toLowerCase();
+  let idNum = rId.value.trim();
+  let loc = rLoc.value.trim();
+  let gender = rGender.value;
+  let pass = rPass.value;
+  let pass2 = rPass2.value;
+  if(!name || !phone || !email || !idNum || !loc || !gender || !pass || !pass2){
+    showMsg(regMsg, '❌ Fill ALL fields including Gender.'); return;
+  }
+  if(!/^[0-9]+$/.test(phone)){ showMsg(regMsg, '❌ Phone must be numbers only.'); return; }
+  if(phone.length < 10){ showMsg(regMsg, '❌ Phone must be at least 10 numbers.'); return; }
+  if(!/^[0-9]+$/.test(idNum)){ showMsg(regMsg, '❌ ID must be numbers only.'); return; }
+  if(idNum.length < 8){ showMsg(regMsg, '❌ ID must be at least 8 digits.'); return; }
+  if(!email.endsWith('@gmail.com')){ showMsg(regMsg, '❌ Email must be @gmail.com'); return; }
+  if(pass.length < 4){ showMsg(regMsg, '❌ Password min 4 chars.'); return; }
+  if(pass !== pass2){ showMsg(regMsg, '❌ Passwords do not match.'); return; }
+  regBtn.innerText = '⏳ Sending...'; regBtn.disabled = true;
+  showMsg(regMsg, '⏳ Sending...', false);
+  let data = {full_name:name, phone:phone, email:email, id_number:idNum, location:loc, gender:gender, password:pass, status:'pending'};
+  let {error} = await supabase.from('providers').insert([data]);
+  regBtn.innerText = 'Submit for Verification'; regBtn.disabled = false;
+  if(error){
+    showMsg(regMsg, '❌ '+error.message);
+    if(error.message.includes('gender')) alert('Add gender column in Supabase: providers > Add column gender text');
+  } else {
+    regBox.classList.add('hidden');
+    sentBlock.classList.remove('hidden');
+    sentEmail.innerText = email;
+    ['rName','rPhone','rEmail','rId','rLoc','rPass','rPass2'].forEach(id=>document.getElementById(id).value='');
+    rGender.value='';
+  }
+}
+window.doLogin = async()=>{
+  let msgEl = document.getElementById('msg');
+  let e = email.value.trim().toLowerCase();
+  let p = pass.value;
+  if(!e || !p){ showMsg(msgEl,'❌ Fill email and password'); return; }
+  showMsg(msgEl,'⏳ Logging in...', false);
+  let {data,error} = await supabase.from('providers').select('*').eq('email',e).eq('password',p).single();
+  if(error || !data){ showMsg(msgEl,'❌ Wrong email or password'); return; }
+  if(data.status=='pending'){ showMsg(msgEl,'⏳ Pending verification.'); return; }
+  if(data.status=='rejected'){ showMsg(msgEl,'❌ Rejected.'); return; }
+  localStorage.setItem('provider', JSON.stringify(data));
+  if(data.email==='kibetlenox07@gmail.com' || data.email==='admin@chemist.co.ke' || data.role==='admin') location.href='admin.html';
+  else location.href='provider.html';
+}
+</script></body></html>
