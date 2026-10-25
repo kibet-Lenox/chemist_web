@@ -1,1 +1,1 @@
-A full and complete chemi website.
+A full and complete chemist website.
