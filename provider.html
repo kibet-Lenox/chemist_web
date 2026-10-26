@@ -104,7 +104,25 @@ function draw(){let t=0;let h='';let body='';cart.forEach((c,i)=>{t+=c.price*c.q
 window.updateQty=function(i,v){let val=parseInt(v);if(val<1)val=1;if(val>cart[i].stock){alert('Only '+cart[i].stock+' left');val=cart[i].stock}cart[i].qty=val;draw()}
 window.clearCart=function(){cart=[];draw();document.getElementById('receipt').classList.add('hidden')}
 window.doSell=async function(){if(!cart.length)return alert('Cart empty - Add drugs from Drugs tab');let patient=document.getElementById('pname').value;if(!patient)return alert('Enter patient name');let phoneVal=document.getElementById('pphone').value||'N/A';for(let c of cart){await supabase.from('sales').insert([{drug_id:c.id,drug_name:c.name,quantity_sold:c.qty,total_price:c.price*c.qty,total_amount:c.price*c.qty,profit:(c.price-c.buy)*c.qty,patient_name:patient,patient_phone:phoneVal,provider_email:provider.email}]);await supabase.from('drugs').update({quantity_in_stock:c.stock-c.qty}).eq('id',c.id)}let total=document.getElementById('total').innerText;let receiptNo='RCP-'+Date.now().toString().slice(-6);let itemsHtml=cart.map(c=>`<div style="display:flex;justify-content:space-between"><span>${c.name} x${c.qty}</span><span>Ksh ${c.price*c.qty}</span></div>`).join('');document.getElementById('receipt').classList.remove('hidden');document.getElementById('receipt').innerHTML=`<div style="text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px"><b>CHEMIST ELDORET</b><br><small>Sales Receipt</small></div><p><b>Receipt No:</b> ${receiptNo}</p><p><b>Patient:</b> ${patient}</p><p><b>Phone:</b> ${phoneVal}</p><p><b>Date:</b> ${new Date().toLocaleString()}</p><p><b>Served by:</b> ${provider.full_name}</p><hr style="margin:8px 0">${itemsHtml}<hr style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-weight:bold;font-size:16px"><span>TOTAL</span><span>Ksh ${total}</span></div><p style="text-align:center;margin-top:10px;font-size:12px">Thank you! Get well soon.</p><button onclick="window.print()" class="bg-black text-white w-full p-2 rounded mt-2">🖨️ Print</button>`;cart=[];draw();load()}
-load()
+// FIX BACKSPACE LOGOUT BUG
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Backspace'){
+    let tag = document.activeElement.tagName;
+    let isInput = tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement.isContentEditable;
+    if(!isInput){
+      e.preventDefault(); // stop browser going back
+      console.log('Backspace blocked - not in input');
+    }
+  }
+});
+
+// Also prevent back swipe from logging out
+window.addEventListener('popstate', function(e){
+  e.preventDefault();
+  history.pushState(null, null, location.href);
+});
+history.pushState(null, null, location.href);
+loadAll()
 </script>
 </body>
 </html> 
