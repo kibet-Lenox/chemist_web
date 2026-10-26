@@ -89,8 +89,8 @@ body{background:#f4f6f9}
   <div class="card"><h3>💊 Drugs Stock - <span id="drugCount">0</span></h3>
   <input id="searchDrug" placeholder="Search..." class="border w-full p-2 rounded mt-2" oninput="filterDrugs()">
   <div id="drugsList">Loading...</div></div>
-
-  <div id="sec-patient" class="hidden">
+ </div>
+<div id="sec-patient" class="hidden">
   <div class="card">
     <h3>🧑‍⚕️ Patient Sale</h3>
     <div id="status" class="bg-yellow-100 p-2 rounded mt-2 text-sm">Loading...</div>
@@ -107,5 +107,133 @@ body{background:#f4f6f9}
     </div>
     <div id="receipt" class="bg-white border-2 border-dashed mt-3 p-3 rounded hidden"></div>
   </div>
-  </div>
-                                                                                                                                  </div>
+</div>
+<div id="sec-sales" class="hidden"><div class="card"><h3>💰 Sales History</h3><div id="allSales">Loading...</div></div></div>
+</div>
+<script>
+const SUPABASE_URL='https://urnccqqzoahwdnmygrrc.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVybmNjcXF6b2Fod2RubXlncnJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5MjU0NjksImV4cCI6MjEwODUwMTQ2OX0.5_9I5qh1XgQWh2y-6-Uvv27exPKCq9ImFMK_OK92YG0';
+const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let providerData=JSON.parse(localStorage.getItem('provider')||'null');
+function toggleMenu(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('show');}
+function showSection(name, el){
+  document.querySelectorAll('[id^="sec-"]').forEach(e=>e.classList.add('hidden'));
+  document.getElementById('sec-'+name).classList.remove('hidden');
+  document.querySelectorAll('.menu-item').forEach(t=>t.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+let drugs=[],cart=[]
+window.addNewDrug = async function(){
+  let name = document.getElementById('newName').value.trim();
+  let stock = document.getElementById('newStock').value;
+  let buy = document.getElementById('newBuy').value;
+  let sell = document.getElementById('newSell').value;
+  let expiry = document.getElementById('newExpiry').value;
+  if(!name || !stock || !buy || !sell){document.getElementById('addStatus').innerHTML='<span style="color:red">❌ Fill all *</span>';return;}
+  document.getElementById('addStatus').innerText='Saving...';
+  const { error } = await supabaseClient.from('drugs').insert([{name,quantity_in_stock:parseInt(stock),buying_price:parseFloat(buy),selling_price:parseFloat(sell),stock:parseInt(stock),expiry_date:expiry||null}]);
+  if(error){document.getElementById('addStatus').innerHTML='<span style="color:red">❌ '+error.message+'</span>';}
+  else{document.getElementById('addStatus').innerHTML='<span style="color:green">✅ Added!</span>';document.getElementById('newName').value='';document.getElementById('newStock').value='';document.getElementById('newBuy').value='';document.getElementById('newSell').value='';loadAll();}
+}
+async function loadAll(){
+  const {data:providers}=await supabaseClient.from('providers').select('*').order('created_at',{ascending:false});
+  const pending=providers?providers.filter(p=>p.status==='pending'):[];const approved=providers?providers.filter(p=>p.status==='approved'):[];
+  document.getElementById('pendingCount').innerText=pending.length;document.getElementById('menuPending').innerText=pending.length;document.getElementById('approvedCount').innerText=approved.length;
+  let pHtml=pending.length===0?'<p style="color:green">✅ No pending</p>':'';
+  for(let p of pending){pHtml+='<div style="background:#fff3cd;padding:15px;border-radius:12px;margin-bottom:10px"><b>'+(p.full_name||'')+'</b><br>📧 '+p.email+'<br><button class="btn btn-approve" data-email="'+p.email+'" onclick="approveProvider(this.dataset.email)">Approve</button> <button class="btn btn-reject" data-email="'+p.email+'" onclick="rejectProvider(this.dataset.email)">Reject</button></div>';}
+  document.getElementById('pendingList').innerHTML=pHtml;
+  let aHtml=approved.length===0?'<p>No approved</p>':'';for(let p of approved){aHtml+='<div style="background:#d1e7dd;padding:12px;border-radius:10px;margin-bottom:8px"><b>'+p.full_name+'</b><br><small>'+p.email+'</small></div>';}
+  document.getElementById('approvedList').innerHTML=aHtml;
+  try{
+    const {data:sales}=await supabaseClient.from('sales').select('*').order('created_at',{ascending:false}).limit(100);
+    if(sales&&sales.length>0){let total=0,profit=0;for(let s of sales){total+=parseFloat(s.total_amount||s.total_price||0);profit+=parseFloat(s.profit||0);}document.getElementById('totalSales').innerText='Ksh '+total.toLocaleString();document.getElementById('totalProfit').innerText='Ksh '+profit.toLocaleString();}
+  }catch(e){}
+  try{
+    const {data:drugsData}=await supabaseClient.from('drugs').select('*').order('name',{ascending:true});
+    drugs=drugsData||[];document.getElementById('status').innerText='✅ Loaded '+drugs.length;document.getElementById('drugCount').innerText=drugs.length;renderDrugs(drugs);
+  }catch(e){}
+}
+function renderDrugs(arr){
+  let dHtml='<table width="100%" style="font-size:13px;margin-top:8px"><tr style="font-weight:bold;background:#f0f0f0"><td>Name</td><td>Stock</td><td>Buy</td><td>Sell</td><td>Action</td></tr>';
+  for(let d of arr){dHtml+='<tr><td>'+(d.name||d.drug_name)+'</td><td>'+(d.quantity_in_stock||d.stock||0)+'</td><td>Ksh '+(d.buying_price||0)+'</td><td>Ksh '+(d.selling_price||0)+'</td><td><button onclick="addToCart('+d.id+')" class="bg-blue-600 text-white px-2 py-1 rounded">Add</button></td></tr>';}
+  dHtml+='</table>';document.getElementById('drugsList').innerHTML=dHtml;
+}
+window.filterDrugs=function(){let q=document.getElementById('searchDrug').value.toLowerCase();renderDrugs(drugs.filter(d=>(d.name||'').toLowerCase().includes(q)));}
+window.addToCart=function(id){let d=drugs.find(x=>x.id==id);if(!d)return;let c=cart.find(x=>x.id==id);if(c)c.qty++;else cart.push({id:d.id,name:d.name||d.drug_name,price:d.selling_price,buy:d.buying_price,qty:1,stock:d.quantity_in_stock||d.stock});drawCart();}
+function drawCart(){let t=0;let h='';let body='';cart.forEach((c,i)=>{t+=c.price*c.qty;h+=`<div>${c.name} x${c.qty} - Ksh ${c.price*c.qty}</div>`;body+=`<tr><td class="p-2 border">${c.name}</td><td class="p-2 border">${c.qty}</td><td class="p-2 border">Ksh ${c.price}</td><td class="p-2 border">Ksh ${c.price*c.qty}</td><td><button onclick="cart.splice(${i},1);drawCart()">❌</button></td></tr>`;});document.getElementById('cart').innerHTML=h||'Cart empty';if(cart.length>0){document.getElementById('saleTable').classList.remove('hidden');document.getElementById('saleBody').innerHTML=body}else{document.getElementById('saleTable').classList.add('hidden')}document.getElementById('total').innerText=t;}
+window.clearCart=function(){cart=[];drawCart();}
+window.doSell=async function(){
+  if(!cart.length) return alert('Cart empty');
+  let patient=document.getElementById('pname').value;if(!patient) return alert('Enter patient');
+  let phoneVal=document.getElementById('pphone').value||'N/A';
+  for(let c of cart){
+    await supabaseClient.from('sales').insert([{drug_id:c.id,drug_name:c.name,quantity_sold:c.qty,total_price:c.price*c.qty,total_amount:c.price*c.qty,profit:(c.price-c.buy)*c.qty,patient_name:patient,patient_phone:phoneVal,provider_email:providerData?providerData.email:'kibetlenox07@gmail.com'}]);
+    await supabaseClient.from('drugs').update({quantity_in_stock:c.stock-c.qty,stock:c.stock-c.qty}).eq('id',c.id);
+  }
+  alert('Sold! Total Ksh '+document.getElementById('total').innerText);cart=[];drawCart();loadAll();
+}
+async function approveProvider(email){await supabaseClient.from('providers').update({status:'approved'}).eq('email',email);loadAll();}
+async function rejectProvider(email){await supabaseClient.from('providers').delete().eq('email',email);loadAll();}
+// SCANNER
+let html5QrCode=null;
+window.startScanner=async function(){
+  document.getElementById('reader').style.display='block';
+  document.getElementById('scanResult').innerText='Starting camera...';
+  if(html5QrCode) try{await html5QrCode.stop();}catch(e){}
+  html5QrCode=new Html5Qrcode("reader");
+  html5QrCode.start({facingMode:"environment"},{fps:10,qrbox:{width:250,height:250}},
+    (decodedText)=>{
+      document.getElementById('scanResult').innerText='✅ '+decodedText;
+      try{
+        let obj=JSON.parse(decodedText);
+        if(obj.name) document.getElementById('newName').value=obj.name;
+        if(obj.buy) document.getElementById('newBuy').value=obj.buy;
+        if(obj.sell) document.getElementById('newSell').value=obj.sell;
+        if(obj.stock) document.getElementById('newStock').value=obj.stock;
+      }catch(e){
+        if(decodedText.includes('|')){
+          let p=decodedText.split('|');
+          document.getElementById('newName').value=p[0];
+          if(p[1]) document.getElementById('newBuy').value=p[1];
+          if(p[2]) document.getElementById('newSell').value=p[2];
+          if(p[3]) document.getElementById('newStock').value=p[3];
+        }else{document.getElementById('newName').value=decodedText;}
+      }
+      stopScanner();
+    },()=>{}).catch(err=>{document.getElementById('scanResult').innerText='❌ '+err});
+}
+window.stopScanner=async function(){if(html5QrCode){try{await html5QrCode.stop();}catch(e){}html5QrCode=null;}document.getElementById('reader').style.display='none';}
+window.importCSV=function(e){
+  let file=e.target.files[0];if(!file)return;
+  let reader=new FileReader();
+  reader.onload=async function(ev){
+    let lines=ev.target.result.split('\n');let count=0;
+    for(let i=1;i<lines.length;i++){
+      let cols=lines[i].split(',');if(cols.length<4)continue;
+      let name=cols[0]?.trim();let buy=parseFloat(cols[1]);let sell=parseFloat(cols[2]);let stock=parseInt(cols[3]);
+      if(!name)continue;
+      await supabaseClient.from('drugs').insert([{name,buying_price:buy,selling_price:sell,quantity_in_stock:stock,stock}]);
+      count++;
+    }
+    alert('✅ Imported '+count);loadAll();
+  }
+  reader.readAsText(file);
+}
+// BACKSPACE FIX
+document.addEventListener('keydown', function(e){
+  if(e.key==='Backspace'){
+    let tag=document.activeElement.tagName;
+    let isInput=tag==='INPUT'||tag==='TEXTAREA'||document.activeElement.isContentEditable;
+    if(!isInput){e.preventDefault();}
+  }
+});
+window.addEventListener('popstate', function(e){e.preventDefault();history.pushState(null,null,location.href);});
+history.pushState(null,null,location.href);
+loadAll();
+</script>
+</body>
+</html>
+
+ 
