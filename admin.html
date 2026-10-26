@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -6,6 +6,7 @@
 <title>Super Admin - Chemist Eldoret</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:Arial}
 body{background:#f4f6f9}
@@ -48,7 +49,7 @@ body{background:#f4f6f9}
 <div class="main" style="padding:10px">
 <div id="sec-home">
   <div style="height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:white;border-radius:15px;margin-top:20px">
-    <h1 style="font-size:32px;color:#0f5132">💊 Chemist Eldoret</h1><p style="color:#666;margin-top:10px">Super Admin Console</p><p style="font-size:50px;margin-top:20px">👑</p><p style="color:#999;margin-top:10px">Tap ☰ menu to manage</p>
+    <h1 style="font-size:32px;color:#0f5132">💊 Chemist Eldoret</h1><p style="color:#666;margin-top:10px">Super Admin Console</p><p style="font-size:50px;margin-top:20px">👑</p>
   </div>
 </div>
 <div id="sec-dashboard">
@@ -62,38 +63,43 @@ body{background:#f4f6f9}
   <div class="card"><h3>⚠️ Low Stock</h3><div id="lowStock">Loading...</div></div>
 </div>
 <div id="sec-providers" class="hidden">
-  <div class="card"><h3>🔴 Pending Verification</h3><div id="pendingList">Loading...</div></div>
-  <div class="card"><h3>🟢 Approved Providers</h3><div id="approvedList">Loading...</div></div>
+  <div class="card"><h3>🔴 Pending</h3><div id="pendingList">Loading...</div></div>
+  <div class="card"><h3>🟢 Approved</h3><div id="approvedList">Loading...</div></div>
 </div>
 <div id="sec-drugs" class="hidden">
   <div class="card" style="background:#e8f5e9;border:2px solid #198754">
-    <h3>➕ Add New Drug</h3>
+    <h3>➕ Add New Drug - Fast Mode</h3>
+    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+      <button onclick="startScanner()" class="bg-blue-600 text-white px-3 py-2 rounded-lg font-bold flex-1">📷 Scan Barcode/QR</button>
+      <button onclick="stopScanner()" class="bg-gray-600 text-white px-3 py-2 rounded-lg">✖ Stop</button>
+      <label class="bg-orange-500 text-white px-3 py-2 rounded-lg font-bold cursor-pointer text-center flex-1">📁 Bulk CSV<input type="file" id="csvFile" accept=".csv" hidden onchange="importCSV(event)"></label>
+    </div>
+    <div id="reader" style="width:100%;margin-top:10px;border-radius:10px;overflow:hidden;display:none"></div>
+    <div id="scanResult" class="text-xs mt-1 text-green-700 font-bold"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
-      <div><label class="text-xs font-bold">Drug Name *</label><input id="newName" class="input" placeholder="e.g Panadol"></div>
+      <div><label class="text-xs font-bold">Drug Name *</label><input id="newName" class="input" placeholder="Scan or type"></div>
       <div><label class="text-xs font-bold">Quantity *</label><input id="newStock" type="number" class="input" placeholder="100"></div>
-      <div><label class="text-xs font-bold">Buying Price *</label><input id="newBuy" type="number" class="input" placeholder="50"></div>
-      <div><label class="text-xs font-bold">Selling Price *</label><input id="newSell" type="number" class="input" placeholder="80"></div>
-      <div style="grid-column: span 2"><label class="text-xs font-bold">Expiry Date</label><input id="newExpiry" type="date" class="input"></div>
+      <div><label class="text-xs font-bold">Buying *</label><input id="newBuy" type="number" class="input" placeholder="50"></div>
+      <div><label class="text-xs font-bold">Selling *</label><input id="newSell" type="number" class="input" placeholder="80"></div>
+      <div style="grid-column: span 2"><label class="text-xs font-bold">Expiry</label><input id="newExpiry" type="date" class="input"></div>
     </div>
     <button onclick="addNewDrug()" class="bg-green-700 text-white w-full p-3 rounded-xl font-bold mt-3">💾 SAVE DRUG</button>
     <div id="addStatus" class="text-sm mt-2"></div>
   </div>
-
-  <div class="card"><h3>💊 Drugs Stock (A-Z) - <span id="drugCount">0</span> items</h3>
-  <input id="searchDrug" placeholder="Search drug..." class="border w-full p-2 rounded mt-2" oninput="filterDrugs()">
+  <div class="card"><h3>💊 Drugs Stock - <span id="drugCount">0</span></h3>
+  <input id="searchDrug" placeholder="Search..." class="border w-full p-2 rounded mt-2" oninput="filterDrugs()">
   <div id="drugsList">Loading...</div></div>
-</div>
-<div id="sec-patient" class="hidden">
+
+  <div id="sec-patient" class="hidden">
   <div class="card">
-    <h3>🧑‍⚕️ Patient Sale - Admin Can Sell</h3>
+    <h3>🧑‍⚕️ Patient Sale</h3>
     <div id="status" class="bg-yellow-100 p-2 rounded mt-2 text-sm">Loading...</div>
     <label class="text-sm font-bold mt-3 block">Patient Name</label>
     <input id="pname" placeholder="Patient Full Name" value="Tabitha Cherotich" class="border w-full p-3 rounded mb-2">
     <label class="text-sm font-bold">Patient Phone</label>
     <input id="pphone" placeholder="Patient phone" class="border w-full p-3 rounded mb-2">
-    <div class="mt-3 font-bold text-sm">Selected Drugs - Tap drugs to add from Drugs Stock tab</div>
     <div id="cart" class="text-sm mt-1">Cart empty</div>
-    <table id="saleTable" class="w-full mt-2 border hidden"><thead><tr class="bg-gray-100"><th class="p-2 border text-left">Drug</th><th class="p-2 border">Qty</th><th class="p-2 border">Price</th><th class="p-2 border">Total</th><th class="p-2 border"></th></tr></thead><tbody id="saleBody"></tbody></table>
+    <table id="saleTable" class="w-full mt-2 border hidden"><thead><tr class="bg-gray-100"><th class="p-2 border text-left">Drug</th><th class="p-2 border">Qty</th><th class="p-2 border">Price</th><th class="p-2 border">Total</th><th></th></tr></thead><tbody id="saleBody"></tbody></table>
     <div class="font-bold mt-3 text-lg">Total Ksh <span id="total">0</span></div>
     <div class="flex gap-2 mt-3">
       <button onclick="doSell()" class="bg-green-600 text-white flex-1 p-3 rounded-xl font-bold">💰 SELL & PRINT</button>
@@ -101,151 +107,5 @@ body{background:#f4f6f9}
     </div>
     <div id="receipt" class="bg-white border-2 border-dashed mt-3 p-3 rounded hidden"></div>
   </div>
-</div>
-<div id="sec-sales" class="hidden"><div class="card"><h3>💰 Sales History</h3><div id="allSales">Loading...</div></div></div>
-</div>
-<script>
-const SUPABASE_URL='https://urnccqqzoahwdnmygrrc.supabase.co';
-const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVybmNjcXF6b2Fod2RubXlncnJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5MjU0NjksImV4cCI6MjEwODUwMTQ2OX0.5_9I5qh1XgQWh2y-6-Uvv27exPKCq9ImFMK_OK92YG0';
-const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let providerData=JSON.parse(localStorage.getItem('provider')||'null');
-function toggleMenu(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('show');}
-function showSection(name, el){
-  document.querySelectorAll('[id^="sec-"]').forEach(e=>e.classList.add('hidden'));
-  document.getElementById('sec-'+name).classList.remove('hidden');
-  document.querySelectorAll('.menu-item').forEach(t=>t.classList.remove('active'));
-  if(el) el.classList.add('active');
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('overlay').classList.remove('show');
-}
-let drugs=[],cart=[]
-
-// --- NEW: ADD DRUG FUNCTION ---
-window.addNewDrug = async function(){
-  let name = document.getElementById('newName').value.trim();
-  let stock = document.getElementById('newStock').value;
-  let buy = document.getElementById('newBuy').value;
-  let sell = document.getElementById('newSell').value;
-  let expiry = document.getElementById('newExpiry').value;
-
-  if(!name || !stock || !buy || !sell){
-    document.getElementById('addStatus').innerHTML = '<span style="color:red">❌ Fill all * fields</span>';
-    return;
-  }
-
-  document.getElementById('addStatus').innerText = 'Saving...';
-
-  const { data, error } = await supabaseClient.from('drugs').insert([{
-    name: name,
-    quantity_in_stock: parseInt(stock),
-    buying_price: parseFloat(buy),
-    selling_price: parseFloat(sell),
-    stock: parseInt(stock),
-    expiry_date: expiry || null
-  }]);
-
-  if(error){
-    document.getElementById('addStatus').innerHTML = '<span style="color:red">❌ '+error.message+'</span>';
-  } else {
-    document.getElementById('addStatus').innerHTML = '<span style="color:green">✅ '+name+' added successfully!</span>';
-    document.getElementById('newName').value='';document.getElementById('newStock').value='';document.getElementById('newBuy').value='';document.getElementById('newSell').value='';
-    loadAll();
-    setTimeout(()=>document.getElementById('addStatus').innerText='',3000);
-  }
-}
-
-async function loadAll(){
-  const {data:providers}=await supabaseClient.from('providers').select('*').order('created_at',{ascending:false});
-  const pending=providers?providers.filter(p=>p.status==='pending'):[];const approved=providers?providers.filter(p=>p.status==='approved'):[];
-  document.getElementById('pendingCount').innerText=pending.length;document.getElementById('menuPending').innerText=pending.length;document.getElementById('approvedCount').innerText=approved.length;
-  let pHtml=pending.length===0?'<p style="color:green">✅ No pending</p>':'';
-  for(let p of pending){pHtml+='<div style="background:#fff3cd;padding:15px;border-radius:12px;margin-bottom:10px;border-left:5px solid #ffc107"><b>'+(p.full_name||'')+'</b> <span style="background:#6c757d;color:white;padding:2px 8px;border-radius:10px;font-size:11px">'+(p.gender||'')+'</span><div style="margin-top:8px;font-size:13px;line-height:1.6">📧 <b>Email:</b> '+p.email+'<br>📱 <b>Phone:</b> '+(p.phone||'N/A')+'<br>🆔 <b>ID:</b> '+(p.id_number||'N/A')+'<br>📍 <b>Location:</b> '+(p.location||'N/A')+'<br>📅 '+(p.created_at?new Date(p.created_at).toLocaleString():'')+'</div><div style="margin-top:10px"><button class="btn btn-approve" data-email="'+p.email+'" onclick="approveProvider(this.dataset.email)">Approve</button> <button class="btn btn-reject" data-email="'+p.email+'" onclick="rejectProvider(this.dataset.email)">Reject</button></div></div>';}
-  document.getElementById('pendingList').innerHTML=pHtml;
-  let aHtml=approved.length===0?'<p>No approved</p>':'';for(let p of approved){aHtml+='<div style="background:#d1e7dd;padding:12px;border-radius:10px;margin-bottom:8px;border-left:5px solid #198754"><b>'+p.full_name+'</b> '+(p.role==='admin'?'👑':'')+' <span style="background:#198754;color:white;padding:2px 8px;border-radius:10px;font-size:11px">'+(p.gender||'')+'</span><br><small>📧 '+p.email+' | 📱 '+(p.phone||'')+' | 🆔 '+(p.id_number||'')+' | 📍 '+(p.location||'')+'</small></div>';}
-  document.getElementById('approvedList').innerHTML=aHtml;
-  try{
-    const {data:sales}=await supabaseClient.from('sales').select('*').order('created_at',{ascending:false}).limit(100);
-    if(sales&&sales.length>0){let total=0,profit=0;for(let s of sales){total+=parseFloat(s.total_amount||s.total_price||0);profit+=parseFloat(s.profit||0);}document.getElementById('totalSales').innerText='Ksh '+total.toLocaleString();document.getElementById('totalProfit').innerText='Ksh '+profit.toLocaleString();let rs='<table width="100%" style="font-size:13px">';for(let s of sales.slice(0,5)){rs+='<tr><td>'+(s.drug_name||'Sale')+'</td><td>Ksh '+(s.total_amount||s.total_price||0)+'</td><td>'+new Date(s.created_at).toLocaleDateString()+'</td></tr>';}rs+='</table>';document.getElementById('recentSales').innerHTML=rs;let all='<table width="100%" style="font-size:12px"><tr style="font-weight:bold;background:#f0f0f0"><td>Drug</td><td>Qty</td><td>Total</td><td>Profit</td><td>Patient</td><td>Phone</td><td>Date</td></tr>';for(let s of sales){all+='<tr><td>'+(s.drug_name||'')+'</td><td>'+(s.quantity_sold||'')+'</td><td>Ksh '+(s.total_amount||s.total_price||'')+'</td><td style="color:green;font-weight:bold">Ksh '+(s.profit||0)+'</td><td>'+(s.patient_name||'')+'</td><td>'+(s.patient_phone||'')+'</td><td>'+new Date(s.created_at).toLocaleDateString()+'</td></tr>';}all+='</table>';document.getElementById('allSales').innerHTML=all;}else{document.getElementById('recentSales').innerHTML='<p>No sales yet</p>';document.getElementById('allSales').innerHTML='<p>No sales yet</p>';}
-  }catch(e){}
-  try{
-    const {data:drugsData}=await supabaseClient.from('drugs').select('*').order('name',{ascending:true});
-    drugs=drugsData||[];
-    document.getElementById('status').innerText='✅ Loaded '+drugs.length+' drugs - Ready to sell';
-    document.getElementById('drugCount').innerText=drugs.length;
-    renderDrugs(drugs);
-  }catch(e){}
-}
-function renderDrugs(arr){
-  let low=[];
-  let dHtml='<table width="100%" style="font-size:13px;margin-top:8px"><tr style="font-weight:bold;background:#f0f0f0"><td>Name</td><td>Stock</td><td>Buy</td><td>Sell</td><td>Action</td></tr>';
-  for(let d of arr){
-    let buy=d.buying_price||0;let sell=d.selling_price||0;
-    dHtml+='<tr><td>'+(d.name||d.drug_name)+'</td><td>'+(d.quantity_in_stock||d.stock||0)+'</td><td>Ksh '+buy+'</td><td>Ksh '+sell+'</td><td><button onclick="addToCart('+d.id+')" class="bg-blue-600 text-white px-2 py-1 rounded">Add</button></td></tr>';
-    if((d.quantity_in_stock||d.stock||0)<10) low.push(d);
-  }
-  dHtml+='</table>';
-  document.getElementById('drugsList').innerHTML=dHtml;
-  document.getElementById('lowStock').innerHTML=low.length===0?'<p style="color:green">All stock OK</p>':low.map(d=>'<p>⚠️ '+(d.name||d.drug_name)+' - '+(d.quantity_in_stock||d.stock||0)+' left</p>').join('');
-}
-window.filterDrugs=function(){
-  let q=document.getElementById('searchDrug').value.toLowerCase();
-  renderDrugs(drugs.filter(d=>(d.name||'').toLowerCase().includes(q)));
-}
-window.addToCart=function(id){
-  let d=drugs.find(x=>x.id==id);
-  if(!d||(d.quantity_in_stock||d.stock)<=0) return alert('Out of stock!');
-  let c=cart.find(x=>x.id==id);
-  if(c){if(c.qty>=(d.quantity_in_stock||d.stock)) return alert('Only '+(d.quantity_in_stock||d.stock)+' left!');c.qty++;}else{cart.push({id:d.id,name:d.name||d.drug_name,price:d.selling_price,buy:d.buying_price,qty:1,stock:d.quantity_in_stock||d.stock})}
-  drawCart();
-  document.getElementById('status').innerText='✅ '+(d.name||d.drug_name)+' added - Cart: '+cart.length+' items';
-  document.getElementById('status').style.background='#d1e7dd';
-  let toast=document.createElement('div');
-  toast.innerText='✅ '+(d.name||d.drug_name)+' added';
-  toast.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#198754;color:white;padding:12px 20px;border-radius:25px;font-weight:bold;z-index:999';
-  document.body.appendChild(toast);
-  setTimeout(()=>toast.remove(),2000);
-}
-function drawCart(){
-  let t=0;let h='';let body='';
-  cart.forEach((c,i)=>{
-    t+=c.price*c.qty;
-    h+=`<div class="flex justify-between py-1"><span>${c.name} x${c.qty}</span><span>Ksh ${c.price*c.qty} <button onclick="cart.splice(${i},1);drawCart()" class="text-red-500 ml-2 font-bold">x</button></span></div>`;
-    body+=`<tr><td class="p-2 border">${c.name}</td><td class="p-2 border"><input type="number" min="1" max="${c.stock}" value="${c.qty}" onchange="updateQty(${i},this.value)" class="w-12 border rounded"></td><td class="p-2 border">Ksh ${c.price}</td><td class="p-2 border">Ksh ${c.price*c.qty}</td><td class="p-2 border"><button onclick="cart.splice(${i},1);drawCart()" class="text-red-500">❌</button></td></tr>`;
-  });
-  document.getElementById('cart').innerHTML=h||'Cart empty - Add from Drugs Stock';
-  if(cart.length>0){document.getElementById('saleTable').classList.remove('hidden');document.getElementById('saleBody').innerHTML=body}else{document.getElementById('saleTable').classList.add('hidden')}
-  document.getElementById('total').innerText=t;
-}
-window.updateQty=function(i,v){let val=parseInt(v);if(val<1)val=1;if(val>cart[i].stock){alert('Only '+cart[i].stock+' left');val=cart[i].stock}cart[i].qty=val;drawCart();}
-window.clearCart=function(){cart=[];drawCart();document.getElementById('receipt').classList.add('hidden');}
-window.doSell=async function(){
-  if(!cart.length) return alert('Cart empty - Add drugs');
-  let patient=document.getElementById('pname').value;if(!patient) return alert('Enter patient name');
-  let phoneVal=document.getElementById('pphone').value||'N/A';
-  for(let c of cart){
-    await supabaseClient.from('sales').insert([{drug_id:c.id,drug_name:c.name,quantity_sold:c.qty,total_price:c.price*c.qty,total_amount:c.price*c.qty,profit:(c.price-c.buy)*c.qty,patient_name:patient,patient_phone:phoneVal,provider_email:providerData?providerData.email:'kibetlenox07@gmail.com'}]);
-    await supabaseClient.from('drugs').update({quantity_in_stock:c.stock-c.qty}).eq('id',c.id);
-  }
-  let total=document.getElementById('total').innerText;
-  let receiptNo='RCP-'+Date.now().toString().slice(-6);
-  let itemsHtml=cart.map(c=>`<div style="display:flex;justify-content:space-between"><span>${c.name} x${c.qty}</span><span>Ksh ${c.price*c.qty}</span></div>`).join('');
-  document.getElementById('receipt').classList.remove('hidden');
-  document.getElementById('receipt').innerHTML=`<div style="text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px"><b>CHEMIST ELDORET - ADMIN</b><br><small>Sales Receipt</small></div><p><b>Receipt No:</b> ${receiptNo}</p><p><b>Patient:</b> ${patient}</p><p><b>Phone:</b> ${phoneVal}</p><p><b>Date:</b> ${new Date().toLocaleString()}</p><p><b>Served by:</b> Admin</p><hr style="margin:8px 0">${itemsHtml}<hr style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-weight:bold;font-size:16px"><span>TOTAL</span><span>Ksh ${total}</span></div><p style="text-align:center;margin-top:10px;font-size:12px">Thank you! Get well soon.</p><button onclick="window.print()" class="bg-black text-white w-full p-2 rounded mt-2">🖨️ Print</button>`;
-  cart=[];drawCart();loadAll();
-}
-async function approveProvider(email){if(!confirm('Approve '+email+'?'))return;await supabaseClient.from('providers').update({status:'approved'}).eq('email',email);alert('Approved '+email);loadAll();}
-async function rejectProvider(email){if(!confirm('DELETE '+email+'?'))return;await supabaseClient.from('providers').delete().eq('email',email);loadAll();}
-// FIX BACKSPACE LOGOUT BUG
-document.addEventListener('keydown', function(e){
-  if(e.key === 'Backspace'){
-    let tag = document.activeElement.tagName;
-    let isInput = tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement.isContentEditable;
-    if(!isInput){ e.preventDefault(); }
-  }
-});
-window.addEventListener('popstate', function(e){ e.preventDefault(); history.pushState(null, null, location.href); });
-history.pushState(null, null, location.href);
-loadAll();
-</script>
-</body>
-  </html>
+  </div>
+                                                                                                                                  </div>
