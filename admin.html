@@ -26,6 +26,7 @@ body{background:#f4f6f9}
 .stat{background:white;padding:18px;border-radius:12px;text-align:center}
 .stat h2{font-size:26px;color:#0f5132}
 .hidden{display:none}
+.input{border:1px solid #ccc;padding:10px;border-radius:8px;width:100%;margin-top:4px}
 </style>
 </head>
 <body>
@@ -44,7 +45,7 @@ body{background:#f4f6f9}
   <div class="menu-item" onclick="showSection('sales', this)">💰 Sales History</div>
   <div class="menu-item" onclick="showSection('home', this)">🏠 Home</div>
 </div>
-<div class="main">
+<div class="main" style="padding:10px">
 <div id="sec-home">
   <div style="height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:white;border-radius:15px;margin-top:20px">
     <h1 style="font-size:32px;color:#0f5132">💊 Chemist Eldoret</h1><p style="color:#666;margin-top:10px">Super Admin Console</p><p style="font-size:50px;margin-top:20px">👑</p><p style="color:#999;margin-top:10px">Tap ☰ menu to manage</p>
@@ -65,7 +66,20 @@ body{background:#f4f6f9}
   <div class="card"><h3>🟢 Approved Providers</h3><div id="approvedList">Loading...</div></div>
 </div>
 <div id="sec-drugs" class="hidden">
-  <div class="card"><h3>💊 Drugs Stock (A-Z)</h3>
+  <div class="card" style="background:#e8f5e9;border:2px solid #198754">
+    <h3>➕ Add New Drug</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+      <div><label class="text-xs font-bold">Drug Name *</label><input id="newName" class="input" placeholder="e.g Panadol"></div>
+      <div><label class="text-xs font-bold">Quantity *</label><input id="newStock" type="number" class="input" placeholder="100"></div>
+      <div><label class="text-xs font-bold">Buying Price *</label><input id="newBuy" type="number" class="input" placeholder="50"></div>
+      <div><label class="text-xs font-bold">Selling Price *</label><input id="newSell" type="number" class="input" placeholder="80"></div>
+      <div style="grid-column: span 2"><label class="text-xs font-bold">Expiry Date</label><input id="newExpiry" type="date" class="input"></div>
+    </div>
+    <button onclick="addNewDrug()" class="bg-green-700 text-white w-full p-3 rounded-xl font-bold mt-3">💾 SAVE DRUG</button>
+    <div id="addStatus" class="text-sm mt-2"></div>
+  </div>
+
+  <div class="card"><h3>💊 Drugs Stock (A-Z) - <span id="drugCount">0</span> items</h3>
   <input id="searchDrug" placeholder="Search drug..." class="border w-full p-2 rounded mt-2" oninput="filterDrugs()">
   <div id="drugsList">Loading...</div></div>
 </div>
@@ -105,6 +119,41 @@ function showSection(name, el){
   document.getElementById('overlay').classList.remove('show');
 }
 let drugs=[],cart=[]
+
+// --- NEW: ADD DRUG FUNCTION ---
+window.addNewDrug = async function(){
+  let name = document.getElementById('newName').value.trim();
+  let stock = document.getElementById('newStock').value;
+  let buy = document.getElementById('newBuy').value;
+  let sell = document.getElementById('newSell').value;
+  let expiry = document.getElementById('newExpiry').value;
+
+  if(!name || !stock || !buy || !sell){
+    document.getElementById('addStatus').innerHTML = '<span style="color:red">❌ Fill all * fields</span>';
+    return;
+  }
+
+  document.getElementById('addStatus').innerText = 'Saving...';
+
+  const { data, error } = await supabaseClient.from('drugs').insert([{
+    name: name,
+    quantity_in_stock: parseInt(stock),
+    buying_price: parseFloat(buy),
+    selling_price: parseFloat(sell),
+    stock: parseInt(stock),
+    expiry_date: expiry || null
+  }]);
+
+  if(error){
+    document.getElementById('addStatus').innerHTML = '<span style="color:red">❌ '+error.message+'</span>';
+  } else {
+    document.getElementById('addStatus').innerHTML = '<span style="color:green">✅ '+name+' added successfully!</span>';
+    document.getElementById('newName').value='';document.getElementById('newStock').value='';document.getElementById('newBuy').value='';document.getElementById('newSell').value='';
+    loadAll();
+    setTimeout(()=>document.getElementById('addStatus').innerText='',3000);
+  }
+}
+
 async function loadAll(){
   const {data:providers}=await supabaseClient.from('providers').select('*').order('created_at',{ascending:false});
   const pending=providers?providers.filter(p=>p.status==='pending'):[];const approved=providers?providers.filter(p=>p.status==='approved'):[];
@@ -122,6 +171,7 @@ async function loadAll(){
     const {data:drugsData}=await supabaseClient.from('drugs').select('*').order('name',{ascending:true});
     drugs=drugsData||[];
     document.getElementById('status').innerText='✅ Loaded '+drugs.length+' drugs - Ready to sell';
+    document.getElementById('drugCount').innerText=drugs.length;
     renderDrugs(drugs);
   }catch(e){}
 }
@@ -190,20 +240,12 @@ document.addEventListener('keydown', function(e){
   if(e.key === 'Backspace'){
     let tag = document.activeElement.tagName;
     let isInput = tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement.isContentEditable;
-    if(!isInput){
-      e.preventDefault(); // stop browser going back
-      console.log('Backspace blocked - not in input');
-    }
+    if(!isInput){ e.preventDefault(); }
   }
 });
-
-// Also prevent back swipe from logging out
-window.addEventListener('popstate', function(e){
-  e.preventDefault();
-  history.pushState(null, null, location.href);
-});
+window.addEventListener('popstate', function(e){ e.preventDefault(); history.pushState(null, null, location.href); });
 history.pushState(null, null, location.href);
 loadAll();
 </script>
 </body>
-</html>
+  </html>
