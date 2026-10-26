@@ -185,6 +185,24 @@ window.doSell=async function(){
 }
 async function approveProvider(email){if(!confirm('Approve '+email+'?'))return;await supabaseClient.from('providers').update({status:'approved'}).eq('email',email);alert('Approved '+email);loadAll();}
 async function rejectProvider(email){if(!confirm('DELETE '+email+'?'))return;await supabaseClient.from('providers').delete().eq('email',email);loadAll();}
+// FIX BACKSPACE LOGOUT BUG
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Backspace'){
+    let tag = document.activeElement.tagName;
+    let isInput = tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement.isContentEditable;
+    if(!isInput){
+      e.preventDefault(); // stop browser going back
+      console.log('Backspace blocked - not in input');
+    }
+  }
+});
+
+// Also prevent back swipe from logging out
+window.addEventListener('popstate', function(e){
+  e.preventDefault();
+  history.pushState(null, null, location.href);
+});
+history.pushState(null, null, location.href);
 loadAll();
 </script>
 </body>
